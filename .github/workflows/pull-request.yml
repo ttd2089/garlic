@@ -1,0 +1,39 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+    
+permissions:
+  contents: read
+
+jobs:
+
+  get-go-version:
+    name: Get Go Version
+    uses: ./.github/workflows/get-go-version.yml
+
+  go-test:
+    name: Go Test
+    needs:
+      - get-go-version
+    uses: ./.github/workflows/go-test.yml
+    with:
+      go-version: ${{ needs.get-go-version.outputs.go-version }}
+
+  go-vet:
+    name: Go Vet
+    needs:
+      - get-go-version
+    uses: ./.github/workflows/go-vet.yml
+    with:
+      go-version: ${{ needs.get-go-version.outputs.go-version }}
+
+  go-fmt:
+    name: Go Fmt
+    needs:
+      - get-go-version
+    uses: ./.github/workflows/go-fmt.yml
+    with:
+      go-version: ${{ needs.get-go-version.outputs.go-version }}

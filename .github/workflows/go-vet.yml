@@ -1,0 +1,27 @@
+name: Go Vet
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+
+  go-vet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Go Vet
+        run: go vet ./...
