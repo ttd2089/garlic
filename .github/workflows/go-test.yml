@@ -1,0 +1,27 @@
+name: Go Test
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+
+  go-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Go Test
+        run: go test ./...

@@ -1,0 +1,30 @@
+name: Get Go Version
+
+on:
+  workflow_call:
+    outputs:
+      go-version:
+        description: The Go version in the go.mod file
+        value: ${{ jobs.get-go-version.outputs.go-version }}
+      
+permissions:
+  contents: read
+
+jobs:
+
+  get-go-version:
+    name: Get Go Version
+    runs-on: ubuntu-latest
+
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Go Version
+        id: get-go-version
+        run: |
+          go_version=$(grep '^go' < go.mod | cut -d' ' -f2)
+          echo "go-version=${go_version}" >> "${GITHUB_OUTPUT}"

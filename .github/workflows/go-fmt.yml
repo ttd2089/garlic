@@ -1,0 +1,33 @@
+name: Go Fmt
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+      
+permissions:
+  contents: read
+
+jobs:
+
+  go-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Go Fmt
+        run: |
+          changed="$(go fmt ./...)"
+          if [[ -n "${changed}" ]]; then
+            echo "The following files need to be formatted with go fmt:"
+            sed 's/^/  - /g' <<< ${changed}
+            exit 1
+          fi
