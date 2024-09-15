@@ -66,9 +66,9 @@ The default factory for `bool`, numeric, array, and string types provide the zer
 
 The default factory for channels provides an unbuffered channel.
 
-The default factory for maps is equivalent to `make(map[T]U)`.
+The default factory for maps is equivalent to `make(map[T]U)`. This ensures that the returned value can be written to.
 
-The default factory for slices is equivalent to `make([]T, 0)`.
+The default factory for slices returns `nil`. Unlike with maps, a `nil` slice can be appended to. A zero-length slice can only be written to with an append so semantically there's no difference between `nil` and an empty slice.
 
 Default factories are unavailable for types whose direct [`reflect.Kind`][reflect.Kind] is [`reflect.Uintptr`], [`reflect.Func`], or [`reflect.UnsafePointer`].
 

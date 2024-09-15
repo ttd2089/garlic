@@ -3,6 +3,7 @@ package di
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 )
 
@@ -137,37 +138,26 @@ func (NoDefaultFactory) Is(target error) bool {
 var ErrNilFactory = errors.New("factory cannot be nil")
 
 // A Registry is a collection into which services can be registered and from which a
-// [ServiceProvider] may be built.
-type Registry struct{}
+// [RootProvider] may be built.
+type Registry struct {
+	registrations map[reflect.Type]registration
+}
 
-// RegisterType registers Impl as the runtime type to use when resolving requests for instances of
-// Target. When an instance of Impl is required it will be created with the zero value for non-pointer
-// types, or a non-nil pointer to the zero value of a pointer types element type recursively, then
-// all of the exported members will be initialized using the same [Provider].
-//
-// NOTE: For some values of Impl the package is unable to create default instances in which case
-// [ErrNoDefaultFactory] is returned.
+func (r Registry) BuildRootProvider() (RootProvider, error) {
+	return RootProvider{
+		registrations: maps.Clone(r.registrations),
+		singletons:    &instanceMap{},
+	}, nil
+}
+
+// RegisterType is a shorthand for calling [RegisterFactory] using the result of calling
+// [GetDefaultFactory] for the [Impl] type.
 func RegisterType[Target any, Impl any](registry Registry, lifetime Lifetime) (Registry, error) {
-
-	target := reflect.TypeFor[Target]()
-	impl := reflect.TypeFor[Impl]()
-
-	if err := validateRegistrationTypes(target, impl); err != nil {
-		return registry, err
-	}
-
-	_, err := getDefaultFactory(impl)
+	factory, err := GetDefaultFactory[Impl]()
 	if err != nil {
 		return registry, err
 	}
-
-	if err := validateLifetime(impl, lifetime); err != nil {
-		return registry, err
-	}
-
-	// todo: add registration
-
-	return registry, nil
+	return RegisterFactory[Target](registry, lifetime, factory)
 }
 
 // A Factory is a function that makes instances of T using a Resolver to initialize dependencies.
@@ -194,9 +184,12 @@ func RegisterFactory[Target any, Impl any](
 		return registry, ErrNilFactory
 	}
 
-	// todo: add registration
-
-	return registry, nil
+	return addRegistration(registry, target, registration{
+		lifetime: lifetime,
+		factory: func(resolver Resolver) (any, error) {
+			return factory(resolver)
+		},
+	}), nil
 }
 
 func validateRegistrationTypes(target reflect.Type, impl reflect.Type) error {
@@ -235,26 +228,12 @@ func validateLifetime(impl reflect.Type, lifetime Lifetime) error {
 	return nil
 }
 
-func getDefaultFactory(type_ reflect.Type) (interface{}, error) {
-	elemType := type_
-	for elemType.Kind() == reflect.Pointer {
-		elemType = elemType.Elem()
-	}
-	switch elemType.Kind() {
-	case reflect.Uintptr, reflect.Func, reflect.Interface, reflect.UnsafePointer:
-		return nil, NoDefaultFactory{
-			Type: type_,
-		}
-	}
-	return nil, nil
+func isConcrete(typ reflect.Type) bool {
+	return typ.Kind() != reflect.Interface
 }
 
-func isConcrete(type_ reflect.Type) bool {
-	return type_.Kind() != reflect.Interface
-}
-
-func isSharable(type_ reflect.Type) bool {
-	kind := type_.Kind()
+func isSharable(typ reflect.Type) bool {
+	kind := typ.Kind()
 	if kind == reflect.Pointer {
 		return true
 	}
@@ -264,10 +243,17 @@ func isSharable(type_ reflect.Type) bool {
 	return false
 }
 
-// A Resolver resolves instances of a requested type.
-type Resolver interface {
+type factoryFunc func(Resolver) (any, error)
 
-	// Resolve provides an instance of the requested type if one is registered. Implementations
-	// MUST ensure that the values returned are assignable to the requested type.
-	Resolve(reflect.Type) (any, error)
+type registration struct {
+	lifetime Lifetime
+	factory  factoryFunc
+}
+
+func addRegistration(registry Registry, target reflect.Type, registration_ registration) Registry {
+	if registry.registrations == nil {
+		registry.registrations = make(map[reflect.Type]registration, 0)
+	}
+	registry.registrations[target] = registration_
+	return registry
 }
