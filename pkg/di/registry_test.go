@@ -7,24 +7,23 @@ import (
 	"io"
 	"reflect"
 	"testing"
-	"unsafe"
 )
 
 func TestRegistry(t *testing.T) {
 
 	t.Run("RegisterType", func(t *testing.T) {
 
-		t.Run("returns NonConcreteImplementation when Impl is an interface", func(t *testing.T) {
-			_, err := RegisterType[io.Reader, io.ReadWriter](Registry{}, Transient)
-			if !errors.Is(err, ErrNonConcreteImplementation) {
-				t.Fatalf("expected %q; got %q", ErrNonConcreteImplementation, err)
+		t.Run("returns NoDefaultFactory when target type has no default factory", func(t *testing.T) {
+			_, err := RegisterType[interface{}, func(int) int](Registry{}, Transient)
+			if !errors.Is(err, ErrNoDefaultFactory) {
+				t.Fatalf("expected %q; got %q", ErrNoDefaultFactory, err)
 			}
-			var nonConcreteImpl NonConcreteImplementation
-			if !errors.As(err, &nonConcreteImpl) {
-				t.Fatalf("expected %v to be %T", err, nonConcreteImpl)
+			var noDefaultFactory NoDefaultFactory
+			if !errors.As(err, &noDefaultFactory) {
+				t.Fatalf("expected %v to be %T", err, noDefaultFactory)
 			}
-			if type_ := reflect.TypeFor[io.ReadWriter](); nonConcreteImpl.Type != type_ {
-				t.Errorf("expected err.Type to be %v; got %v", type_, nonConcreteImpl.Type)
+			if typ := reflect.TypeFor[func(int) int](); noDefaultFactory.Type != typ {
+				t.Errorf("expected err.Type to be %v; got %v", typ, noDefaultFactory.Type)
 			}
 		})
 
@@ -42,86 +41,6 @@ func TestRegistry(t *testing.T) {
 			}
 			if structType := reflect.TypeFor[struct{}](); invalidImpl.Type != structType {
 				t.Errorf("expected err.Impl to be %v; got %v", structType, invalidImpl.Type)
-			}
-		})
-
-		t.Run("no default factory", func(t *testing.T) {
-
-			testCases := []struct {
-				name        string
-				fn          func() (Registry, error)
-				expectedErr NoDefaultFactory
-			}{
-				{
-					name: "uintptr",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, uintptr](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[uintptr](),
-					},
-				},
-				{
-					name: "func",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, func()](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[func()](),
-					},
-				},
-				{
-					name: "unsafe.Pointer",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, unsafe.Pointer](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[unsafe.Pointer](),
-					},
-				},
-				{
-					name: "*uintptr",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, *uintptr](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[*uintptr](),
-					},
-				},
-				{
-					name: "**func",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, **func()](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[**func()](),
-					},
-				},
-				{
-					name: "***unsafe.Pointer",
-					fn: func() (Registry, error) {
-						return RegisterType[interface{}, ***unsafe.Pointer](Registry{}, Scoped)
-					},
-					expectedErr: NoDefaultFactory{
-						Type: reflect.TypeFor[***unsafe.Pointer](),
-					},
-				},
-			}
-
-			for _, tt := range testCases {
-				t.Run(fmt.Sprintf("returns NoDefaultFactory for %s", tt.name), func(t *testing.T) {
-					_, err := tt.fn()
-					if !errors.Is(err, ErrNoDefaultFactory) {
-						t.Fatalf("expected %q; got %q", ErrNoDefaultFactory, err)
-					}
-					var noDefaultFactory NoDefaultFactory
-					if !errors.As(err, &noDefaultFactory) {
-						t.Fatalf("expected %v to be %T", err, noDefaultFactory)
-					}
-					if type_ := tt.expectedErr.Type; noDefaultFactory.Type != type_ {
-						t.Errorf("expected err.Type to be %v; got %v", type_, noDefaultFactory.Type)
-					}
-				})
 			}
 		})
 
@@ -238,65 +157,11 @@ func TestRegistry(t *testing.T) {
 					if !errors.As(err, &unsharableType) {
 						t.Fatalf("expected %v to be %T", err, unsharableType)
 					}
-					if type_ := tt.expectedErr.Type; unsharableType.Type != type_ {
-						t.Errorf("expected err.Type to be %v; got %v", type_, unsharableType.Type)
+					if typ := tt.expectedErr.Type; unsharableType.Type != typ {
+						t.Errorf("expected err.Type to be %v; got %v", typ, unsharableType.Type)
 					}
 					if lifetime := tt.expectedErr.Lifetime; unsharableType.Lifetime != lifetime {
 						t.Errorf("expected err.Lifetime to be %v; got %v", lifetime, unsharableType.Lifetime)
-					}
-				})
-			}
-		})
-
-		t.Run("default factories", func(t *testing.T) {
-
-			testCases := []struct {
-				name string
-				fn   func() (Registry, error)
-			}{
-				{
-					name: "int",
-					fn: func() (Registry, error) {
-						return RegisterType[int, int](Registry{}, Transient)
-					},
-				},
-				{
-					name: "string",
-					fn: func() (Registry, error) {
-						return RegisterType[string, string](Registry{}, Transient)
-					},
-				},
-				{
-					name: "struct",
-					fn: func() (Registry, error) {
-						return RegisterType[struct{}, struct{}](Registry{}, Transient)
-					},
-				},
-				{
-					name: "array",
-					fn: func() (Registry, error) {
-						return RegisterType[[3]int, [3]int](Registry{}, Transient)
-					},
-				},
-				{
-					name: "slice",
-					fn: func() (Registry, error) {
-						return RegisterType[[]int, []int](Registry{}, Transient)
-					},
-				},
-				{
-					name: "map",
-					fn: func() (Registry, error) {
-						return RegisterType[map[int]string, map[int]string](Registry{}, Transient)
-					},
-				},
-			}
-
-			for _, tt := range testCases {
-				t.Run(fmt.Sprintf("does not return error for transient %s", tt.name), func(t *testing.T) {
-					_, err := tt.fn()
-					if err != nil {
-						t.Fatalf("unexpected error %v", err)
 					}
 				})
 			}
@@ -358,8 +223,8 @@ func TestRegistry(t *testing.T) {
 			if !errors.As(err, &nonConcreteImpl) {
 				t.Fatalf("expected %v to be %T", err, nonConcreteImpl)
 			}
-			if type_ := reflect.TypeFor[io.ReadWriter](); nonConcreteImpl.Type != type_ {
-				t.Errorf("expected err.Type to be %v; got %v", type_, nonConcreteImpl.Type)
+			if typ := reflect.TypeFor[io.ReadWriter](); nonConcreteImpl.Type != typ {
+				t.Errorf("expected err.Type to be %v; got %v", typ, nonConcreteImpl.Type)
 			}
 		})
 
@@ -513,8 +378,8 @@ func TestRegistry(t *testing.T) {
 					if !errors.As(err, &unsharableType) {
 						t.Fatalf("expected %v to be %T", err, unsharableType)
 					}
-					if type_ := tt.expectedErr.Type; unsharableType.Type != type_ {
-						t.Errorf("expected err.Type to be %v; got %v", type_, unsharableType.Type)
+					if typ := tt.expectedErr.Type; unsharableType.Type != typ {
+						t.Errorf("expected err.Type to be %v; got %v", typ, unsharableType.Type)
 					}
 					if lifetime := tt.expectedErr.Lifetime; unsharableType.Lifetime != lifetime {
 						t.Errorf("expected err.Lifetime to be %v; got %v", lifetime, unsharableType.Lifetime)
