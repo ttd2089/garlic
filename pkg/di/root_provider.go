@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 )
 
 // ErrUnknownType is returned when an attempt is made to resolve a value from a provider but the
@@ -60,10 +59,23 @@ type RootProvider struct {
 	singletons    *instanceMap
 }
 
+// NewScope creates a new [Scope] which can resolve [Scoped] values as well as [Transient]
+// and [Singleton] values.
+func (provider *RootProvider) NewScope() Scope {
+	return Scope{
+		root:         provider,
+		scopedValues: &instanceMap{},
+	}
+}
+
+// Resolve returns an instance of the requested type if it was registered as a Transient or
+// Singleton value.
 func (provider RootProvider) Resolve(typ reflect.Type) (any, error) {
 	registration, ok := provider.registrations[typ]
 	if !ok {
-		return nil, fmt.Errorf("no implementation registered for service type %v", typ)
+		return nil, UnknownType{
+			Type: typ,
+		}
 	}
 	switch registration.lifetime {
 	case Transient:
@@ -73,50 +85,8 @@ func (provider RootProvider) Resolve(typ reflect.Type) (any, error) {
 			Type: typ,
 		}
 	case Singleton:
-		return provider.resolveSingleton(typ, registration.factory)
+		return provider.singletons.resolve(typ, registration.factory, provider)
 	default:
 		panic("this code should be unreachable: please open a an issue at https://github.com/ttd2089/stahp/issues/new")
 	}
-}
-
-func (provider RootProvider) resolveSingleton(typ reflect.Type, factory factoryFunc) (any, error) {
-	return provider.singletons.resolve(typ, factory, provider)
-}
-
-type instanceMap struct {
-	mu        sync.RWMutex
-	instances map[reflect.Type]any
-}
-
-func (m *instanceMap) resolve(
-	typ reflect.Type,
-	factory factoryFunc,
-	resolver Resolver,
-) (any, error) {
-	if v, ok := m.get(typ); ok {
-		return v, nil
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	// We may have resolved and saved a singleton instance while we were waiting for a lock so check again.
-	if service, ok := m.instances[typ]; ok {
-		return service, nil
-	}
-	// Build, save, and return the scoped instance.
-	service, err := factory(resolver)
-	if err != nil {
-		return nil, err
-	}
-	if m.instances == nil {
-		m.instances = make(map[reflect.Type]any)
-	}
-	m.instances[typ] = service
-	return service, nil
-}
-
-func (m *instanceMap) get(typ reflect.Type) (any, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	v, ok := m.instances[typ]
-	return v, ok
 }

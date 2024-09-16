@@ -10,6 +10,25 @@ func TestRootProvider(t *testing.T) {
 
 	t.Run("Resolve", func(t *testing.T) {
 
+		t.Run("returns UnknownType for unknown type", func(t *testing.T) {
+			expectedType := reflect.TypeFor[struct{}]()
+			provider, err := Registry{}.BuildRootProvider()
+			if err != nil {
+				t.Fatalf("unexpected error from BuildRootProvider: %v", err)
+			}
+			_, err = provider.Resolve(expectedType)
+			if !errors.Is(err, ErrUnknownType) {
+				t.Fatalf("expected %q; got %q", ErrUnknownType, err)
+			}
+			var unknownType UnknownType
+			if !errors.As(err, &unknownType) {
+				t.Fatalf("expected %v to be %T", err, unknownType)
+			}
+			if unknownType.Type != expectedType {
+				t.Errorf("expected err.Type to be %v; got %v", expectedType, unknownType.Type)
+			}
+		})
+
 		// distinctCapableStruct is required to observe whether pointers point to the same instance
 		// or not because pointers to zero-length structs can be equal even when the pointed values
 		// are distinct.

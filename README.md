@@ -22,8 +22,8 @@ Many applications can benefit from using request-scoped values. In that case the
 - Resolve the values start accepting requests from the [`di.RootProvider`][di.RootProvider]
 - Start accepting requests
 - For each request:
-  - Create a [`di.ScopedProvider`][di.ScopedProvider] from the [`di.RootProvider`][di.RootProvider]
-  - Resolve the values required to handle the request from the [`di.ScopedProvider`][di.ScopedProvider]
+  - Create a [`di.Scope`][di.Scope] from the [`di.RootProvider`][di.RootProvider]
+  - Resolve the values required to handle the request from the [`di.Scope`][di.Scope]
   - Handle the request
 
 ## Concepts
@@ -48,7 +48,7 @@ An implementation type is the concrete type of the value that will be resolved w
 
 A [`di.Resolver`][di.Resolver] is a value that resolves instances of various types on demand at runtime.
 
-The [`di`][di] package provides two [`di.Resolver`][di.Resolver] implementations: [`di.RootProvider`][di.RootProvider] and [`di.ScopedProvider`][di.ScopedProvider].
+The [`di`][di] package provides two [`di.Resolver`][di.Resolver] implementations: [`di.RootProvider`][di.RootProvider] and [`di.Scope`][di.Scope].
 
 ### Factories
 
@@ -82,7 +82,7 @@ A [`di.Lifetime`][di.Lifetime] describes when a [`di.Resolver`][di.Resolver] sho
 
 The [`di.Transient`][di.Transient] [lifetime][di.Lifetime] specifies that a new value should be initialized every time a type is resolved and can be used with any type.
 
-The [`di.Scoped`][di.Scoped] [lifetime][di.Lifetime] specifies that a single instance of the registered type should be reused every time the type is resolved from the same [`di.ScopedProvider`][di.ScopedProvider], and the [`di.Singleton`][di.Singleton] [lifetime][di.Lifetime] specifies that a single instance should be reused every time the type is resolved from the same [`di.RootProvider`][di.RootProvider] or any [`di.ScopedProvider`][di.ScopedProvider] created from it. In order to support reusing the same instance the [`di.Scoped`][di.Scoped] and [`di.Singleton`][di.Singleton] [lifetimes][di.Lifetime] can only be used with [sharable types](#sharable-types).
+The [`di.Scoped`][di.Scoped] [lifetime][di.Lifetime] specifies that a single instance of the registered type should be reused every time the type is resolved from the same [`di.Scope`][di.Scope], and the [`di.Singleton`][di.Singleton] [lifetime][di.Lifetime] specifies that a single instance should be reused every time the type is resolved from the same [`di.RootProvider`][di.RootProvider] or any [`di.Scope`][di.Scope] created from it. In order to support reusing the same instance the [`di.Scoped`][di.Scoped] and [`di.Singleton`][di.Singleton] [lifetimes][di.Lifetime] can only be used with [sharable types](#sharable-types).
 
 ### Sharable Types
 
@@ -107,7 +107,7 @@ Maps are currently _not_ considered sharable. Although maps hold heir data in an
 [di.Resolver]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Resolver
 [di.RootProvider]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Provider
 [di.Singleton]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Singleton
-[di.ScopedProvider]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#ScopedProvider
+[di.Scope]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Scope
 [di.Scoped]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Scoped
 [di.Transient]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Transient
 
