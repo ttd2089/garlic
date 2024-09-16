@@ -8,33 +8,33 @@ The [`di`][di] package provides mechanisms for declarative, request scope capabl
 
 Most applications using [`di`][di] will look something like this:
 
-- Create a [`di.Registry`][di.Registry]
+- Create a [`di.Registry`](#registries)
 - Register implementations for required types
-- Create a [`di.RootProvider`][di.RootProvider] from the [`di.Registry`][di.Registry]
-- Resolve the values required to run the application from the [`di.RootProvider`][di.RootProvider]
+- Create a [`di.RootProvider`](#root-providers) from the [`di.Registry`](#registries)
+- Resolve the values required to run the application from the [`di.RootProvider`](#root-providers)
 - Run the application
 
 Many applications can benefit from using request-scoped values. In that case the process will have a few additional steps:
 
-- Create a [`di.Registry`][di.Registry]
+- Create a [`di.Registry`](#registries)
 - Register implementations for required types
-- Create a [`di.RootProvider`][di.RootProvider] from the [`di.Registry`][di.Registry]
-- Resolve the values start accepting requests from the [`di.RootProvider`][di.RootProvider]
+- Create a [`di.RootProvider`](#root-providers) from the [`di.Registry`](#registries)
+- Resolve the values start accepting requests from the [`di.RootProvider`](#root-providers)
 - Start accepting requests
 - For each request:
-  - Create a [`di.Scope`][di.Scope] from the [`di.RootProvider`][di.RootProvider]
-  - Resolve the values required to handle the request from the [`di.Scope`][di.Scope]
+  - Create a [`di.Scope`](#scopes) from the [`di.RootProvider`](#root-providers)
+  - Resolve the values required to handle the request from the [`di.Scope`](#scopes)
   - Handle the request
 
 ## Concepts
 
 ### Registries
 
-A [`di.Registry`][di.Registry] is essentially a builder for a [`di.RootProvider`][di.RootProvider]. After creating a [`di.Registry`][di.Registry] you'll add [registrations](#registrations) then build a [`di.RootProvider`][di.RootProvider] that uses those [registrations](#registrations) to resolve and provide values.
+A [`di.Registry`][di.Registry] is essentially a builder for a [`di.RootProvider`](#root-providers). After creating a [`di.Registry`][di.Registry] you'll add [registrations](#registrations) then build a [`di.RootProvider`](#root-providers) that uses those [registrations](#registrations) to resolve and provide values.
 
 ### Registrations
 
-A registration is mapping from a [target type](#target-types) to [factory](#factories) returning an instances of an [implementation type](#implementation-types) that implements the [target type](#target-types). The [factory] describes how to obtain a value when the [target type](#target-types) is requested from a [resolver](#resolvers). The registration also includes a [lifetime](#lifetimes) which describes the [resolver](#resolvers) should initialize new values and when it should reuse values it has already initialized and returned for previous requests.
+A registration is mapping from a [target type](#target-types) to a [factory](#factories) that returns instances of an [implementation type](#implementation-types) that implements the [target type](#target-types). The [factory](#factories) describes how to obtain a value when the [target type](#target-types) is requested from a [`di.Resolver`](#resolvers). The registration also includes a [`di.Lifetime`](#lifetimes) which indicates when the [resolver](#resolvers) should initialize new values and when it should reuse values it has already initialized and returned for previous requests.
 
 ### Target Types
 
@@ -42,17 +42,17 @@ A target type is the type that a [registration](#registrations) describes how to
 
 ### Implementation Types
 
-An implementation type is the concrete type of the value that will be resolved when a target type is requested. Implementation types MUST implement their corresponding [target type](#target-types) and MUST be concrete types. Interface types cannot be implementation types.
+An implementation type is the concrete type of the value that will be resolved when a [target type](#target-types) is requested. Implementation types MUST implement their corresponding [target type](#target-types) and MUST be concrete types.
 
 ### Resolvers
 
 A [`di.Resolver`][di.Resolver] is a value that resolves instances of various types on demand at runtime.
 
-The [`di`][di] package provides two [`di.Resolver`][di.Resolver] implementations: [`di.RootProvider`][di.RootProvider] and [`di.Scope`][di.Scope].
+The [`di`][di] package provides two [`di.Resolver`][di.Resolver] implementations: [`di.RootProvider`](#root-providers) and [`di.Scope`](#scopes).
 
 ### Factories
 
-A [`di.Factory`][di.Factory] is a function that creates values and initializes their dependencies using a [`di.Resolver`][di.Resolver].
+A [`di.Factory`][di.Factory] is a function that creates values and initializes their dependencies using a [`di.Resolver`](#resolvers).
 
 The [`di`][di] package can provide [default factories](#default-factories) for many types, in addition to supporting custom [`di.Factory`][di.Factory] implementations.
 
@@ -60,7 +60,7 @@ The [`di`][di] package can provide [default factories](#default-factories) for m
 
 The [`di`][di] package is able to create and initialize many types without requiring users to provide an explicit [factory](#factories).
 
-The default factory for any struct type starts with the zero value for the type, then initializes all of the exported members using the [`di.Resolver`][di.Resolver]. _NOTE_ that the exported members are initialized with whichever factory the [`di.Resolver`][di.Resolver] has registered for its type which is not necessarily a default factory.
+The default factory for any struct type starts with the zero value for the type, then initializes all of the exported members using the [`di.Resolver`](#resolvers). _NOTE_ that the exported members are initialized with whichever factory the [`di.Resolver`](#resolvers) has registered for its type which is not necessarily a default factory.
 
 The default factory for `bool`, numeric, array, and string types provide the zero value. This includes any type whose [`reflect.Kind`][reflect.Kind] is `reflect.Bool`, `reflect.Int`, `reflect.Int8`, `reflect.Int16`, `reflect.Int32`, `reflect.Int64`, `reflect.Uint`, `reflect.Uint8`, `reflect.Uint16`, `reflect.Uint32`, `reflect.Uint64`, `reflect.Float32`, `reflect.Float64`, `reflect.Complex64`, `reflect.Complex128`, `reflect.Array`, or `reflect.String`.
 
@@ -78,11 +78,11 @@ For types whose [`reflect.Kind`][reflect.Kind] is [`reflect.Pointer`], a default
 
 ### Lifetimes
 
-A [`di.Lifetime`][di.Lifetime] describes when a [`di.Resolver`][di.Resolver] should initialize a new instance of a value to return and when it should reuse a value it has already returned.
+A [`di.Lifetime`][di.Lifetime] describes when a [`di.Resolver`](#resolvers) should initialize a new instance of a value to return and when it should reuse a value it has already returned.
 
 The [`di.Transient`][di.Transient] [lifetime][di.Lifetime] specifies that a new value should be initialized every time a type is resolved and can be used with any type.
 
-The [`di.Scoped`][di.Scoped] [lifetime][di.Lifetime] specifies that a single instance of the registered type should be reused every time the type is resolved from the same [`di.Scope`][di.Scope], and the [`di.Singleton`][di.Singleton] [lifetime][di.Lifetime] specifies that a single instance should be reused every time the type is resolved from the same [`di.RootProvider`][di.RootProvider] or any [`di.Scope`][di.Scope] created from it. In order to support reusing the same instance the [`di.Scoped`][di.Scoped] and [`di.Singleton`][di.Singleton] [lifetimes][di.Lifetime] can only be used with [sharable types](#sharable-types).
+The [`di.Scoped`][di.Scoped] [lifetime][di.Lifetime] specifies that a single instance of the registered type should be reused every time the type is resolved from the same [`di.Scope`](#scopes), and the [`di.Singleton`][di.Singleton] [lifetime][di.Lifetime] specifies that a single instance should be reused every time the type is resolved from the same [`di.RootProvider`](#root-providers) or any [`di.Scope`](#scopes) created from it. In order to support reusing the same instance the [`di.Scoped`][di.Scoped] and [`di.Singleton`][di.Singleton] [lifetimes][di.Lifetime] can only be used with [sharable types](#sharable-types).
 
 ### Sharable Types
 
@@ -100,7 +100,27 @@ Slices hold their element data in underlying arrays by reference, but the portio
 
 Maps are currently _not_ considered sharable. Although maps hold heir data in an underlying structure and copies of maps are consistently observed to reflect writes across instances, the Golang spec does not seem to guarantee that a map write _won't_ result in the written-to map allocating new underlying storage and diverging from the instances with which is was previously consistent (the same way slices can).
 
+#### Root Providers
+
+A [`di.RootProvider`][di.RootProvider] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient` and `di.Singleton` [lifetimes](#lifetimes). In simple applications the [`di.RootProvider`][di.RootProvider] may be used to initialize everything, but for applications requiring request-scoped values the [`di.RootProvider`][di.RootProvider] will typically be used to initialize the request handling infrastructure, then to initialize a distinct [`di.Scope`](#scopes) for each request.
+
+#### Scopes
+
+A [`di.Scope`][di.Scope] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient`, `di.Scoped`, and `di.Singleton` [lifetimes](#lifetimes). The intention of a [`di.Scope`][di.Scope] is to facilitate initializing values that are shared during the processing of a single request, but not shared across requests.
+
+- An HTTP application may use a `di.Scoped` factory to create HTTP clients for outbound requests to facilitate authz context forwarding and general header propagation.
+- Any application participating in distributed tracing may use a `di.Scoped` trace context propagator in combination with other `di.Scoped` and `di.Singleton` values to transparently forward tracing context through to outbound requests.
+- Any application using loggers may use a `di.Scoped` logger factory to consistently pre-enrich logger instances with request-scoped metadata.
+
+[`Close`](#closers) the [`di.Scope`](#scopes)
+
+#### Closers
+
+To help support deterministic lifetimes for [`di.Scoped`] [lifetime](#lifetimes) values the [`di.Scope`] type has a `Close` function that will call `Close` on any values implementing the [`di.ContextCloser`][di.ContextCloser] or [`di.Closer`][di.Closer] interfaces.
+
 [di]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di
+[di.Closer]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Closer
+[di.ContextCloser]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#ContextCloser
 [di.Factory]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Factory
 [di.Lifetime]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Lifetime
 [di.Registry]: https://pkg.go.dev/github.com/ttd2089/garlic/pkg/di#Registry
