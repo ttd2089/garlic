@@ -61,7 +61,7 @@ type RootProvider struct {
 
 // NewScope creates a new [Scope] which can resolve [Scoped] values as well as [Transient]
 // and [Singleton] values.
-func (provider *RootProvider) NewScope() Scope {
+func (provider RootProvider) NewScope() Scope {
 	return Scope{
 		root:         provider,
 		scopedValues: &instanceMap{},

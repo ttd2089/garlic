@@ -9,7 +9,7 @@ import (
 // A Scope is a [Provider] that can resolve [Scoped] values in addition to [Transient] and
 // [Singleton] values. A Scope will create a single instance of a value for a type registered
 type Scope struct {
-	root         *RootProvider
+	root         RootProvider
 	scopedValues *instanceMap
 }
 
