@@ -257,7 +257,33 @@ func TestGetDefaultFactory(t *testing.T) {
 			expected := unexportedFieldsOnly{}
 			factory, _ := GetDefaultFactory[unexportedFieldsOnly]()
 
-			ufo, err := factory(testResolver{})
+			unexpectedWidget := widget{
+				X: 42,
+				y: 1.618,
+			}
+			unexpectedGadget := gadget{
+				Names: map[int]string{
+					1: "one",
+					2: "two",
+				},
+				counts: map[string]int{
+					"three": 3,
+					"four":  4,
+				},
+			}
+
+			resolver := testResolver{
+				resolutions: map[reflect.Type]testResolverResolution{
+					reflect.TypeFor[widget](): {
+						val: unexpectedWidget,
+					},
+					reflect.TypeFor[*gadget](): {
+						val: &unexpectedGadget,
+					},
+				},
+			}
+
+			ufo, err := factory(resolver)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
