@@ -28,7 +28,7 @@ func asFactoryFunc[T any](in func() (Factory[T], error)) func() (factoryFunc, er
 	}
 }
 
-func Test_getDefaultFactory(t *testing.T) {
+func TestGetDefaultFactory(t *testing.T) {
 
 	t.Run("no default factory", func(t *testing.T) {
 
