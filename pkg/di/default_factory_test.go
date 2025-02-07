@@ -295,6 +295,12 @@ func TestGetDefaultFactory(t *testing.T) {
 
 		t.Run("struct does not initialize exported fields recursively", func(t *testing.T) {
 
+			expectedThing := thing{}
+
+			expected := structWtithStructField{
+				Thing: expectedThing,
+			}
+
 			unexpectedWidget := widget{
 				X: 13,
 				y: 3.14,
@@ -308,27 +314,6 @@ func TestGetDefaultFactory(t *testing.T) {
 					"thirteen": 13,
 					"fourteen": 14,
 				},
-			}
-
-			expectedThing := thing{
-				Widget: widget{
-					X: 42,
-					y: 1.618,
-				},
-				Gadget: &gadget{
-					Names: map[int]string{
-						1: "one",
-						2: "two",
-					},
-					counts: map[string]int{
-						"three": 3,
-						"four":  4,
-					},
-				},
-			}
-
-			expected := recursiveStruct{
-				Thing: expectedThing,
 			}
 
 			resolver := testResolver{
@@ -345,14 +330,13 @@ func TestGetDefaultFactory(t *testing.T) {
 				},
 			}
 
-			factory, _ := GetDefaultFactory[recursiveStruct]()
+			factory, _ := GetDefaultFactory[structWtithStructField]()
 
 			rs, _ := factory(resolver)
 
 			if !reflect.DeepEqual(rs, expected) {
 				t.Fatalf("expected %v; got %v", expected, rs)
 			}
-
 		})
 
 		t.Run("pointer to struct returns non-nil pointer to struct", func(t *testing.T) {
@@ -411,6 +395,6 @@ type unexportedFieldsOnly struct {
 	gadget *gadget
 }
 
-type recursiveStruct struct {
+type structWtithStructField struct {
 	Thing thing
 }
