@@ -4,7 +4,7 @@ Golang Automated Resource Locator and Injection Container
 
 ## Overview
 
-The [`di`][di] package provides mechanisms for declarative, request scope capable dependency injection.
+The [`di`][di] package provides mechanisms for declarative, scope-capable dependency injection.
 
 Most applications using [`di`][di] will look something like this:
 
@@ -14,17 +14,17 @@ Most applications using [`di`][di] will look something like this:
 - Resolve the values required to run the application from the [`di.RootProvider`](#root-providers)
 - Run the application
 
-Many applications can benefit from using request-scoped values. In that case the process will have a few additional steps:
+Many applications can benefit from using isolated sets of values for discrete units of work they perform (handling HTTP requests, processing Kafka messages, etc.). In that case the process will have a few additional steps:
 
 - Create a [`di.Registry`](#registries)
 - Register implementations for required types
 - Create a [`di.RootProvider`](#root-providers) from the [`di.Registry`](#registries)
-- Resolve the values start accepting requests from the [`di.RootProvider`](#root-providers)
-- Start accepting requests
-- For each request:
+- Resolve any values required to bootstrap the application from the [`di.RootProvider`](#root-providers)
+- Start accepting units of work
+- For each unit of work:
   - Create a [`di.Scope`](#scopes) from the [`di.RootProvider`](#root-providers)
-  - Resolve the values required to handle the request from the [`di.Scope`](#scopes)
-  - Handle the request
+  - Resolve the values required to handle the unit of work from the [`di.Scope`](#scopes)
+  - Handle the unit of work
 
 ## Concepts
 
@@ -62,7 +62,7 @@ The [`di`][di] package is able to create and initialize many types without requi
 
 The default factory for any struct type starts with the zero value for the type, then initializes all of the exported members using the [`di.Resolver`](#resolvers). _NOTE_ that the exported members are initialized with whichever factory the [`di.Resolver`](#resolvers) has registered for its type which is not necessarily a default factory.
 
-The default factory for `bool`, numeric, array, and string types provide the zero value. This includes any type whose [`reflect.Kind`][reflect.Kind] is `reflect.Bool`, `reflect.Int`, `reflect.Int8`, `reflect.Int16`, `reflect.Int32`, `reflect.Int64`, `reflect.Uint`, `reflect.Uint8`, `reflect.Uint16`, `reflect.Uint32`, `reflect.Uint64`, `reflect.Float32`, `reflect.Float64`, `reflect.Complex64`, `reflect.Complex128`, `reflect.Array`, or `reflect.String`.
+The default factory for `bool`, numeric, array, and `string` types provide the zero value. This includes any type whose [`reflect.Kind`][reflect.Kind] is `reflect.Bool`, `reflect.Int`, `reflect.Int8`, `reflect.Int16`, `reflect.Int32`, `reflect.Int64`, `reflect.Uint`, `reflect.Uint8`, `reflect.Uint16`, `reflect.Uint32`, `reflect.Uint64`, `reflect.Float32`, `reflect.Float64`, `reflect.Complex64`, `reflect.Complex128`, `reflect.Array`, or `reflect.String`.
 
 The default factory for channels provides an unbuffered channel.
 
@@ -88,29 +88,29 @@ The [`di.Scoped`][di.Scoped] [lifetime][di.Lifetime] specifies that a single ins
 
 It's not actually possible in Go to return the same instance of a value more than once; we can only return a copy. However, for types' whose values are references to the data we're interested a copy will generally point to the same data. In this case we can return distinct values that each reference the data we want to share. We refer to these as "sharable types". _NOTE_ that since it is the _value_ rather than the identifier that refers to the shared value, assigning a new value to a field that currently holds reference to a shared value will not update the shared value.
 
-All pointer types are sharable because their value is just a reference to an instance of their element type. _NOTE_ that pointer types don't provide any mechanisms to make concurrent use safe, that's up to the type being pointed to. Keep this in mind when writing and pointers for shared values.
+All pointer types are sharable because their value is just a reference to an instance of their element type. _NOTE_ that pointer types don't provide any mechanisms to make concurrent use safe, that's up to the type being pointed to.
 
 Channels are not technically pointers, but copies of channels are readers and writers of the same stream of data and are safe for concurrent use so channels are considerable sharable.
 
 #### Unsharable Types
 
-Arrays are not sharable because the value of the array includes all of its element values. A copy of an array of a copy of each element  After a copy, mutations to one array are not reflected in the other.
+Arrays are not sharable because the value of the array includes all of its element values. A copy of an array is a copy of each elemen.t After a copy, mutations to one array are not reflected in the other.
 
-Slices hold their element data in underlying arrays by reference, but the portion of the underlying array that the slice exposes and the underlying array itself can change when the slice is modified. As a result, copies of slices will not stay in sync as they are used and are therefore not considered sharable.
+Slices hold their element data in underlying arrays by reference, but the portion of the underlying array that the slice exposes and the underlying array itself can change when the slice is modified. As a result, copies of slices are not guaranteed to stay in sync as they are used and are therefore not considered sharable.
 
 Maps are currently _not_ considered sharable. Although maps hold heir data in an underlying structure and copies of maps are consistently observed to reflect writes across instances, the Golang spec does not seem to guarantee that a map write _won't_ result in the written-to map allocating new underlying storage and diverging from the instances with which is was previously consistent (the same way slices can).
 
 #### Root Providers
 
-A [`di.RootProvider`][di.RootProvider] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient` and `di.Singleton` [lifetimes](#lifetimes). In simple applications the [`di.RootProvider`][di.RootProvider] may be used to initialize everything, but for applications requiring request-scoped values the [`di.RootProvider`][di.RootProvider] will typically be used to initialize the request handling infrastructure, then to initialize a distinct [`di.Scope`](#scopes) for each request.
+A [`di.RootProvider`][di.RootProvider] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient` and `di.Singleton` [lifetimes](#lifetimes). In simple applications the [`di.RootProvider`][di.RootProvider] may be used to initialize everything, but for applications requiring scoped values the [`di.RootProvider`][di.RootProvider] will typically be used to initialize the request handling infrastructure, then to initialize a distinct [`di.Scope`](#scopes) for each unit of work.
 
 #### Scopes
 
-A [`di.Scope`][di.Scope] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient`, `di.Scoped`, and `di.Singleton` [lifetimes](#lifetimes). The intention of a [`di.Scope`][di.Scope] is to facilitate initializing values that are shared during the processing of a single request, but not shared across requests.
+A [`di.Scope`][di.Scope] is a [`di.Resolver`](#resolvers) that provides values with `di.Transient`, `di.Scoped`, and `di.Singleton` [lifetimes](#lifetimes). The intention of a [`di.Scope`][di.Scope] is to facilitate initializing values that are shared during the processing of a single unit of work, but not shared across units of work.
 
-- An HTTP application may use a `di.Scoped` factory to create HTTP clients for outbound requests to facilitate authz context forwarding and general header propagation.
-- Any application participating in distributed tracing may use a `di.Scoped` trace context propagator in combination with other `di.Scoped` and `di.Singleton` values to transparently forward tracing context through to outbound requests.
-- Any application using loggers may use a `di.Scoped` logger factory to consistently pre-enrich logger instances with request-scoped metadata.
+- An application with users and permissions may use a `di.Scoped` factory to initialize values with authz context information embedded to facilitate automated enforcement RBAC/ABAC.
+- An application participating in distributed tracing may use a `di.Scoped` trace context propagator in combination with other `di.Scoped` and `di.Singleton` values to transparently forward tracing context through to outbound requests.
+- An application using loggers may use a `di.Scoped` logger factory to initialize logger instances that automatically contain metadata about the scope such as trace info, HTTP request method/path, authz context, etc.
 
 [`Close`](#closers) the [`di.Scope`](#scopes)
 

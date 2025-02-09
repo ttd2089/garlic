@@ -28,7 +28,7 @@ func asFactoryFunc[T any](in func() (Factory[T], error)) func() (factoryFunc, er
 	}
 }
 
-func Test_getDefaultFactory(t *testing.T) {
+func TestGetDefaultFactory(t *testing.T) {
 
 	t.Run("no default factory", func(t *testing.T) {
 
@@ -257,7 +257,33 @@ func Test_getDefaultFactory(t *testing.T) {
 			expected := unexportedFieldsOnly{}
 			factory, _ := GetDefaultFactory[unexportedFieldsOnly]()
 
-			ufo, err := factory(testResolver{})
+			unexpectedWidget := widget{
+				X: 42,
+				y: 1.618,
+			}
+			unexpectedGadget := gadget{
+				Names: map[int]string{
+					1: "one",
+					2: "two",
+				},
+				counts: map[string]int{
+					"three": 3,
+					"four":  4,
+				},
+			}
+
+			resolver := testResolver{
+				resolutions: map[reflect.Type]testResolverResolution{
+					reflect.TypeFor[widget](): {
+						val: unexpectedWidget,
+					},
+					reflect.TypeFor[*gadget](): {
+						val: &unexpectedGadget,
+					},
+				},
+			}
+
+			ufo, err := factory(resolver)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -268,6 +294,12 @@ func Test_getDefaultFactory(t *testing.T) {
 		})
 
 		t.Run("struct does not initialize exported fields recursively", func(t *testing.T) {
+
+			expectedThing := thing{}
+
+			expected := structWtithStructField{
+				Thing: expectedThing,
+			}
 
 			unexpectedWidget := widget{
 				X: 13,
@@ -284,27 +316,6 @@ func Test_getDefaultFactory(t *testing.T) {
 				},
 			}
 
-			expectedThing := thing{
-				Widget: widget{
-					X: 42,
-					y: 1.618,
-				},
-				Gadget: &gadget{
-					Names: map[int]string{
-						1: "one",
-						2: "two",
-					},
-					counts: map[string]int{
-						"three": 3,
-						"four":  4,
-					},
-				},
-			}
-
-			expected := recursiveStruct{
-				Thing: expectedThing,
-			}
-
 			resolver := testResolver{
 				resolutions: map[reflect.Type]testResolverResolution{
 					reflect.TypeFor[widget](): {
@@ -319,14 +330,13 @@ func Test_getDefaultFactory(t *testing.T) {
 				},
 			}
 
-			factory, _ := GetDefaultFactory[recursiveStruct]()
+			factory, _ := GetDefaultFactory[structWtithStructField]()
 
 			rs, _ := factory(resolver)
 
 			if !reflect.DeepEqual(rs, expected) {
 				t.Fatalf("expected %v; got %v", expected, rs)
 			}
-
 		})
 
 		t.Run("pointer to struct returns non-nil pointer to struct", func(t *testing.T) {
@@ -385,6 +395,6 @@ type unexportedFieldsOnly struct {
 	gadget *gadget
 }
 
-type recursiveStruct struct {
+type structWtithStructField struct {
 	Thing thing
 }
